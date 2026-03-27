@@ -6,98 +6,219 @@
     <title>Next-Gen Racing Scout</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .card-gold { background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7); color: #1a202c; }
-        .card-silver { background: linear-gradient(135deg, #e3e3e3, #ffffff, #c7c7c7); color: #1a202c; }
-        .card-bronze { background: linear-gradient(135deg, #cd7f32, #f5d087, #a0522d); color: #ffffff; }
+        /* Equibase-inspired color palette */
+        .bg-equibase-navy { background-color: #002b5c; }
+        .text-equibase-navy { color: #002b5c; }
+        .border-equibase-navy { border-color: #002b5c; }
+        .bg-equibase-gold { background-color: #d4af37; }
+        
+        /* Clean table borders for data */
+        .stat-table th, .stat-table td { border-bottom: 1px solid #e5e7eb; padding: 0.5rem; text-align: center; }
+        .stat-table th { background-color: #f3f4f6; font-size: 0.75rem; text-transform: uppercase; color: #4b5563; }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-6 font-sans">
+<body class="bg-gray-100 text-gray-900 min-h-screen font-sans">
 
-    <div class="max-w-6xl mx-auto">
-        <header class="mb-8 border-b border-gray-700 pb-4">
-            <h1 class="text-4xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-                Next-Gen Roster
-            </h1>
-            <p class="text-gray-400 mt-2">Live GPS Biometric Scouting</p>
-        </header>
+    <header class="bg-equibase-navy text-white border-b-4 border-yellow-500 shadow-md">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-serif font-bold tracking-tight">Scouting & Biometrics</h1>
+                <p class="text-sm text-gray-300 font-medium tracking-wide">ADVANCED GPS METRICS DASHBOARD</p>
+            </div>
+            <div class="hidden md:block text-right">
+                <span class="bg-equibase-gold text-equibase-navy text-xs font-bold px-3 py-1 rounded uppercase tracking-wider">
+                    Live Data Feed
+                </span>
+            </div>
+        </div>
+    </header>
 
-        <div class="mb-8">
-            <label class="block text-sm font-bold mb-2 text-gray-300">Select Upcoming Race:</label>
-            <select id="raceSelector" class="w-full md:w-1/3 p-3 bg-gray-800 border border-gray-600 rounded text-white font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Loading races...</option>
-            </select>
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        
+        <div class="bg-white p-6 border border-gray-300 shadow-sm mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="w-full md:w-1/2">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Select Upcoming Race (Sorted by Photo Availability)</label>
+                <select id="raceSelector" disabled class="w-full p-2 border border-gray-300 bg-gray-50 text-gray-800 font-semibold focus:outline-none focus:border-equibase-navy focus:ring-1 focus:ring-equibase-navy disabled:opacity-50">
+                    <option value="">Initializing Database & Pre-loading Images...</option>
+                </select>
+            </div>
+            <div id="statusIndicator" class="text-sm font-semibold text-equibase-navy bg-blue-50 px-4 py-2 rounded border border-blue-100">
+                Status: Connecting...
+            </div>
         </div>
 
-        <div id="cardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="cardGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             </div>
-    </div>
+    </main>
 
     <script>
         let horseData = [];
+        let imageAvailability = new Set(); // Stores clean names of images that successfully loaded
 
-        // Load the JSON data
-        fetch('./races.json') 
-    	    .then(response => response.json())
-            .then(data => {
-                horseData = data.filter(h => h.OVR !== "No GPS Data"); // Only show scouted horses
-                populateDropdown();
-            });
-
-        function populateDropdown() {
-            const selector = document.getElementById('raceSelector');
-            // Get unique races (Track + Date + Race Num)
-            const races = [...new Set(horseData.map(h => `${h.track_id} - Race ${h.race_number} (${h.race_date})`))];
-            
-            selector.innerHTML = '<option value="">-- Choose a Race --</option>';
-            races.forEach(race => {
-                selector.innerHTML += `<option value="${race}">${race}</option>`;
-            });
-
-            selector.addEventListener('change', (e) => renderCards(e.target.value));
+        // 1. "Fuzzy" Name Sanitizer
+        // Converts "O'Prado Again" to "opradoagain" to match image filenames predictably
+        function getCleanFilename(name) {
+            return name.toLowerCase().replace(/[^a-z0-9]/g, '');
         }
 
-        function renderCards(selectedRace) {
-            const grid = document.getElementById('cardGrid');
-            grid.innerHTML = ''; // Clear current cards
+        // 2. Fetch Data and Pre-load Images
+        fetch('./races.json')
+            .then(response => response.json())
+            .then(data => {
+                horseData = data.filter(h => h.OVR !== "No GPS Data");
+                preloadImagesAndInitialize();
+            })
+            .catch(err => {
+                document.getElementById('statusIndicator').innerText = "Error loading database.";
+                document.getElementById('statusIndicator').className = "text-sm font-semibold text-red-700 bg-red-50 px-4 py-2 rounded border border-red-200";
+            });
 
-            const filteredHorses = horseData.filter(h => 
-                `${h.track_id} - Race ${h.race_number} (${h.race_date})` === selectedRace
-            );
+        async function preloadImagesAndInitialize() {
+            const status = document.getElementById('statusIndicator');
+            status.innerText = "Scanning Media Directory...";
+
+            // Create a unique list of horse names to test
+            const uniqueHorses = [...new Set(horseData.map(h => h.horse_name))];
+            
+            // Build an array of promises that resolve whether the image loads or fails
+            const imagePromises = uniqueHorses.map(name => {
+                return new Promise(resolve => {
+                    const img = new Image();
+                    const cleanName = getCleanFilename(name);
+                    
+                    img.onload = () => {
+                        imageAvailability.add(cleanName); // It exists!
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        resolve(); // It failed, but resolve anyway to keep moving
+                    };
+                    img.src = `./images/${cleanName}.png`; // Look in the local images folder
+                });
+            });
+
+            // Wait for all image tests to finish
+            await Promise.all(imagePromises);
+            
+            status.innerText = `Database Ready: ${imageAvailability.size} Photos Loaded`;
+            status.className = "text-sm font-semibold text-green-700 bg-green-50 px-4 py-2 rounded border border-green-200";
+            
+            buildAndSortDropdown();
+        }
+
+        function buildAndSortDropdown() {
+            // Group horses by race and count how many have images
+            const raceStats = {};
+            
+            horseData.forEach(h => {
+                // Format: "Keeneland - Apr 15 - Race 4"
+                const dateStr = new Date(h.race_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const raceKey = `${h.track_id} - ${dateStr} - Race ${h.race_number}`;
+                
+                if (!raceStats[raceKey]) {
+                    raceStats[raceKey] = { key: raceKey, count: 0, horses: 0 };
+                }
+                
+                raceStats[raceKey].horses += 1;
+                if (imageAvailability.has(getCleanFilename(h.horse_name))) {
+                    raceStats[raceKey].count += 1;
+                }
+            });
+
+            // Convert to array and sort: Highest image count first, then by total horses
+            const sortedRaces = Object.values(raceStats).sort((a, b) => {
+                if (b.count !== a.count) return b.count - a.count;
+                return b.horses - a.horses;
+            });
+
+            // Populate the selector
+            const selector = document.getElementById('raceSelector');
+            selector.innerHTML = '<option value="">-- Select a Race Card --</option>';
+            
+            sortedRaces.forEach(race => {
+                const photoText = race.count > 0 ? `(${race.count} Photos)` : ``;
+                selector.innerHTML += `<option value="${race.key}">${race.key} ${photoText}</option>`;
+            });
+
+            selector.disabled = false;
+            selector.addEventListener('change', (e) => renderCards(e.target.value));
+
+            // Automatically load the first race with the most photos
+            if (sortedRaces.length > 0 && sortedRaces[0].count > 0) {
+                selector.value = sortedRaces[0].key;
+                renderCards(sortedRaces[0].key);
+            }
+        }
+
+        function renderCards(selectedRaceKey) {
+            const grid = document.getElementById('cardGrid');
+            grid.innerHTML = '';
+
+            const filteredHorses = horseData.filter(h => {
+                const dateStr = new Date(h.race_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const raceKey = `${h.track_id} - ${dateStr} - Race ${h.race_number}`;
+                return raceKey === selectedRaceKey;
+            });
+
+            // Sort horses within the race by OVR
+            filteredHorses.sort((a, b) => parseInt(b.OVR) - parseInt(a.OVR));
 
             filteredHorses.forEach(horse => {
-                // Determine Card Tier based on OVR
-                let theme = 'card-bronze';
-                if (horse.OVR >= 90) theme = 'card-gold';
-                else if (horse.OVR >= 80) theme = 'card-silver';
+                const cleanName = getCleanFilename(horse.horse_name);
+                const hasImage = imageAvailability.has(cleanName);
+                
+                // Fallback UI if no image exists
+                const imageSection = hasImage 
+                    ? `<img src="./images/${cleanName}.png" alt="${horse.horse_name}" class="w-full h-full object-cover object-top">`
+                    : `<div class="w-full h-full bg-gray-200 flex flex-col items-center justify-center text-gray-400">
+                           <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2v12a2 2 0 002 2z"></path></svg>
+                           <span class="text-xs font-bold uppercase">No Photo on File</span>
+                       </div>`;
 
-                // Format Badges
                 const badges = horse.Tags.split(',').map(tag => 
-                    `<span class="px-2 py-1 bg-black bg-opacity-30 rounded-full text-xs font-bold uppercase mr-1">${tag.trim()}</span>`
+                    `<span class="bg-blue-100 text-equibase-navy px-2 py-0.5 rounded text-xs font-bold border border-blue-200 whitespace-nowrap">${tag.trim()}</span>`
                 ).join('');
 
                 const cardHTML = `
-                    <div class="${theme} rounded-xl shadow-2xl p-6 transform transition duration-300 hover:scale-105 hover:shadow-3xl border border-gray-800">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <h2 class="text-5xl font-black tracking-tighter">${horse.OVR}</h2>
-                                <p class="text-sm font-bold uppercase tracking-widest opacity-80">OVR</p>
-                            </div>
-                            <div class="text-right">
-                                <h3 class="text-xl font-black uppercase tracking-wide leading-tight">${horse.horse_name}</h3>
-                                <p class="text-sm font-bold italic opacity-80">${horse.Archetype}</p>
+                    <div class="bg-white border border-gray-300 shadow-sm flex flex-col sm:flex-row overflow-hidden hover:shadow-md transition-shadow">
+                        
+                        <div class="sm:w-2/5 h-48 sm:h-auto border-b sm:border-b-0 sm:border-r border-gray-200 relative">
+                            ${imageSection}
+                            <div class="absolute top-2 left-2 bg-equibase-navy text-white text-2xl font-black px-3 py-1 border border-white shadow">
+                                ${horse.OVR}
                             </div>
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-4 mb-4 border-t border-b border-black border-opacity-20 py-4">
-                            <div><span class="font-bold">SPD</span> <span class="float-right text-lg font-black">${horse.SPD}</span></div>
-                            <div><span class="font-bold">STR</span> <span class="float-right text-lg font-black">${horse.STR}</span></div>
-                            <div><span class="font-bold">STA</span> <span class="float-right text-lg font-black">${horse.STA}</span></div>
-                            <div><span class="font-bold">EFF</span> <span class="float-right text-lg font-black">${horse.EFF}</span></div>
-                            <div class="col-span-2"><span class="font-bold">CLASS</span> <span class="float-right text-lg font-black">${horse.CLS}</span></div>
-                        </div>
-
-                        <div class="flex flex-wrap mt-2">
-                            ${badges}
+                        <div class="sm:w-3/5 p-4 flex flex-col justify-between">
+                            <div>
+                                <h2 class="text-xl font-black uppercase text-gray-900 leading-none mb-1">${horse.horse_name}</h2>
+                                <p class="text-sm text-gray-500 font-bold italic mb-4">${horse.Archetype}</p>
+                                
+                                <table class="w-full stat-table mb-4">
+                                    <thead>
+                                        <tr>
+                                            <th>SPD</th>
+                                            <th>STR</th>
+                                            <th>STA</th>
+                                            <th>EFF</th>
+                                            <th>CLS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="font-bold text-gray-800">${horse.SPD}</td>
+                                            <td class="font-bold text-gray-800">${horse.STR}</td>
+                                            <td class="font-bold text-gray-800">${horse.STA}</td>
+                                            <td class="font-bold text-gray-800">${horse.EFF}</td>
+                                            <td class="font-bold text-gray-800">${horse.CLS}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="flex flex-wrap gap-1">
+                                ${badges}
+                            </div>
                         </div>
                     </div>
                 `;
