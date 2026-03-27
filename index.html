@@ -182,62 +182,63 @@
             filteredHorses.forEach(horse => {
                 const imageUrl = validImageUrls[horse.horse_name];
 
+                // Changed to object-contain and absolute positioning so it perfectly fits the left column
                 const imageSection = imageUrl
-                    ? `<img src="${imageUrl}" alt="${horse.horse_name}" class="w-full h-full object-cover object-top">`
-                    : `<div class="w-full h-full bg-gray-100 flex flex-col items-center justify-center text-gray-400">
-                               <svg class="w-12 h-12 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2v12a2 2 0 002 2z"></path></svg>
-                               <span class="text-xs font-bold uppercase tracking-widest">No Photo</span>
-                           </div>`;
+                    ? `<img src="${imageUrl}" alt="${horse.horse_name}" class="absolute inset-0 w-full h-full object-contain object-center p-2">`
+                    : `<div class="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center text-gray-400">
+                           <svg class="w-8 h-8 sm:w-12 sm:h-12 mb-1 sm:mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2v12a2 2 0 002 2z"></path></svg>
+                           <span class="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-center">No Photo</span>
+                       </div>`;
 
                 const badges = horse.Tags.split(',').map(tag => {
                     if (tag.trim() === "N/A" || tag.trim() === "Standard Prospect") return '';
-                    return `<span class="bg-equibase-light text-equibase-green px-2 py-0.5 rounded text-xs font-bold border border-equibase-green whitespace-nowrap">${tag.trim()}</span>`;
+                    return `<span class="bg-equibase-light text-equibase-green px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded text-[10px] sm:text-xs font-bold border border-equibase-green whitespace-nowrap">${tag.trim()}</span>`;
                 }).join('');
 
                 const cardHTML = `
-                        <div class="bg-white border border-gray-300 shadow-sm flex flex-col sm:flex-row overflow-hidden hover:shadow-md transition-shadow relative">
+                    <div class="bg-white border border-gray-300 shadow-sm flex flex-row overflow-hidden hover:shadow-md transition-shadow relative min-h-[160px]">
+                        
+                        <div class="absolute top-0 left-0 bg-equibase-green text-white text-lg sm:text-xl font-black px-2 py-1 border-b-2 border-r-2 border-equibase-accent z-10 shadow-sm">
+                            ${horse.OVR}
+                        </div>
 
-                            <div class="absolute top-0 left-0 bg-equibase-green text-white text-xl font-black px-3 py-1 border-b-2 border-r-2 border-equibase-accent z-10">
-                                ${horse.OVR}
+                        <div class="w-[35%] sm:w-2/5 border-r border-gray-200 relative bg-gray-50 flex-shrink-0">
+                            ${imageSection}
+                        </div>
+                        
+                        <div class="w-[65%] sm:w-3/5 p-3 sm:p-4 flex flex-col justify-center">
+                            <div>
+                                <h2 class="text-lg sm:text-2xl font-black uppercase text-gray-900 leading-tight mb-0.5">${horse.horse_name}</h2>
+                                <p class="text-xs sm:text-sm text-equibase-green font-bold italic mb-3">${horse.Archetype}</p>
+                                
+                                <table class="w-full stat-table mb-3">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-0.5 sm:px-2 text-[10px] sm:text-xs">SPD</th>
+                                            <th class="px-0.5 sm:px-2 text-[10px] sm:text-xs">STR</th>
+                                            <th class="px-0.5 sm:px-2 text-[10px] sm:text-xs">STA</th>
+                                            <th class="px-0.5 sm:px-2 text-[10px] sm:text-xs">EFF</th>
+                                            <th class="px-0.5 sm:px-2 text-[10px] sm:text-xs">CLS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="font-bold text-gray-800 text-xs sm:text-base px-0.5 sm:px-2">${horse.SPD}</td>
+                                            <td class="font-bold text-gray-800 text-xs sm:text-base px-0.5 sm:px-2">${horse.STR}</td>
+                                            <td class="font-bold text-gray-800 text-xs sm:text-base px-0.5 sm:px-2">${horse.STA}</td>
+                                            <td class="font-bold text-gray-800 text-xs sm:text-base px-0.5 sm:px-2">${horse.EFF}</td>
+                                            <td class="font-bold text-gray-800 text-xs sm:text-base px-0.5 sm:px-2">${horse.CLS}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-
-                            <div class="sm:w-2/5 h-56 sm:h-auto border-b sm:border-b-0 sm:border-r border-gray-200 relative bg-gray-50">
-                                ${imageSection}
-                            </div>
-
-                            <div class="sm:w-3/5 p-4 flex flex-col justify-between">
-                                <div>
-                                    <h2 class="text-2xl font-black uppercase text-gray-900 leading-none mb-1 mt-2 sm:mt-0">${horse.horse_name}</h2>
-                                    <p class="text-sm text-equibase-green font-bold italic mb-4">${horse.Archetype}</p>
-
-                                    <table class="w-full stat-table mb-4">
-                                        <thead>
-                                            <tr>
-                                                <th>SPD</th>
-                                                <th>STR</th>
-                                                <th>STA</th>
-                                                <th>EFF</th>
-                                                <th>CLS</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td class="font-bold text-gray-800">${horse.SPD}</td>
-                                                <td class="font-bold text-gray-800">${horse.STR}</td>
-                                                <td class="font-bold text-gray-800">${horse.STA}</td>
-                                                <td class="font-bold text-gray-800">${horse.EFF}</td>
-                                                <td class="font-bold text-gray-800">${horse.CLS}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div class="flex flex-wrap gap-2">
-                                    ${badges}
-                                </div>
+                            
+                            <div class="flex flex-wrap gap-1">
+                                ${badges}
                             </div>
                         </div>
-                    `;
+                    </div>
+                `;
                 grid.innerHTML += cardHTML;
             });
         }
