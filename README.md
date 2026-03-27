@@ -1,1 +1,1 @@
-"# equibase-horse-rating" 
+"# equibase-horse-rating." 
