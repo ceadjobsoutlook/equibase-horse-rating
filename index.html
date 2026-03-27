@@ -53,15 +53,12 @@
 
     <main class="max-w-7xl mx-auto px-6 py-8">
 
-        <div class="bg-white p-6 border border-gray-300 shadow-sm mb-8 flex flex-col md:flex-row gap-4 items-center justify-between border-l-4 border-l-equibase-green">
+        <div class="bg-white p-6 border border-gray-300 shadow-sm mb-8 border-l-4 border-l-equibase-green">
             <div class="w-full md:w-1/2">
-                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Select Upcoming Race (Sorted by Photo Availability)</label>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Select Upcoming Race</label>
                 <select id="raceSelector" disabled class="w-full p-2 border border-gray-300 bg-gray-50 text-gray-800 font-semibold focus:outline-none focus:border-equibase-green focus:ring-1 focus:ring-equibase-green disabled:opacity-50">
-                    <option value="">Initializing Database & Pre-loading Images...</option>
+                    <option value="">Loading...</option>
                 </select>
-            </div>
-            <div id="statusIndicator" class="text-sm font-semibold text-equibase-green bg-green-50 px-4 py-2 rounded border border-green-200">
-                Status: Connecting...
             </div>
         </div>
 
@@ -81,20 +78,16 @@
                 preloadImagesAndInitialize();
             })
             .catch(err => {
-                document.getElementById('statusIndicator').innerText = "Error loading database.";
-                document.getElementById('statusIndicator').className = "text-sm font-semibold text-red-700 bg-red-50 px-4 py-2 rounded border border-red-200";
+                const selector = document.getElementById('raceSelector');
+                selector.innerHTML = '<option value="">Error loading data.</option>';
             });
 
         async function preloadImagesAndInitialize() {
-            const status = document.getElementById('statusIndicator');
-            status.innerText = "Scanning Media Directory for Matches...";
-
             const uniqueHorses = [...new Set(horseData.map(h => h.horse_name))];
 
-            // The Multi-Try Loader
+            // The Multi-Try Loader (Checks various file name formats)
             const imagePromises = uniqueHorses.map(name => {
                 return new Promise(resolve => {
-                    // Create an array of potential filenames to test
                     const formats = [
                         name.toLowerCase().trim(),                         // "so so"
                         name.toLowerCase().replace(/[^a-z0-9]/g, ''),      // "soso"
@@ -128,11 +121,6 @@
             });
 
             await Promise.all(imagePromises);
-
-            const totalPhotos = Object.keys(validImageUrls).length;
-            status.innerText = `Database Ready: ${totalPhotos} Photos Loaded`;
-            status.className = "text-sm font-semibold text-equibase-green bg-green-50 px-4 py-2 rounded border border-green-200";
-
             buildAndSortDropdown();
         }
 
@@ -154,6 +142,7 @@
                 }
             });
 
+            // Sort by most photos first, then by most horses
             const sortedRaces = Object.values(raceStats).sort((a, b) => {
                 if (b.count !== a.count) return b.count - a.count;
                 return b.horses - a.horses;
@@ -170,6 +159,7 @@
             selector.disabled = false;
             selector.addEventListener('change', (e) => renderCards(e.target.value));
 
+            // Automatically load the top race
             if (sortedRaces.length > 0) {
                 selector.value = sortedRaces[0].key;
                 renderCards(sortedRaces[0].key);
@@ -186,6 +176,7 @@
                 return raceKey === selectedRaceKey;
             });
 
+            // Sort by OVR highest to lowest
             filteredHorses.sort((a, b) => parseInt(b.OVR) - parseInt(a.OVR));
 
             filteredHorses.forEach(horse => {
