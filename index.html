@@ -67,6 +67,12 @@
     </main>
 
     <script>
+        // Converts Excel serial date (e.g., 46106) to a JS Date object
+        function excelToDate(excelDate) {
+            // 25569 is the number of days between Excel epoch and Unix epoch
+            return new Date((excelDate - 25569) * 86400 * 1000);
+        }
+
         let horseData = [];
         let validImageUrls = {}; // Stores the exact working URL for each horse
 
@@ -128,7 +134,14 @@
             const raceStats = {};
 
             horseData.forEach(h => {
-                const dateStr = new Date(h.race_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                // Convert the number 46106 to a real date object first
+                const realDate = excelToDate(h.race_date);
+                const dateStr = realDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+
+                const raceKey = `${h.track_id} - ${dateStr} - Race ${h.race_number}`;
                 const raceKey = `${h.track_id} - ${dateStr} - Race ${h.race_number}`;
 
                 if (!raceStats[raceKey]) {
@@ -171,7 +184,12 @@
             grid.innerHTML = '';
 
             const filteredHorses = horseData.filter(h => {
-                const dateStr = new Date(h.race_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const realDate = excelToDate(h.race_date);
+                const dateStr = realDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+
                 const raceKey = `${h.track_id} - ${dateStr} - Race ${h.race_number}`;
                 return raceKey === selectedRaceKey;
             });
